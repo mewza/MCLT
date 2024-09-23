@@ -7,5 +7,8 @@ License: FREEWARE for commerical and non-commercial use,
 
 See: https://en.wikipedia.org/wiki/Modulated_complex_lapped_transform
 
+It works! and it is 1:1 implementation of the algorithm described in the Malvar's
+article.
+
 Enjoy,
 Dmitry Boldyrev / The Real Inventor of Winamp
