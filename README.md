@@ -1,6 +1,6 @@
 This is implementation of the Modulated Complex Lapped Transform by H. Malvar
 that I hacked together, similar to FFT, this discrete mathematical algorithm is 
-used in similar fashion in the field of signal processing.
+used in similar fashion in the field of digital signal processing.
 
 License: FREEWARE for commerical and non-commercial use, 
          but would appreciate a mention in credits
