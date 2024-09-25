@@ -11,4 +11,4 @@ It works! and it is 1:1 implementation of the algorithm described in the Malvar'
 article.
 
 Enjoy,
-Dmitry Boldyrev / The Real Inventor of Winamp
+Dmitry Boldyrev / The Original Inventor of Macamp/Winamp
