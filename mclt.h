@@ -555,17 +555,25 @@ public:
     }
 
     // --- Forward MCLT: real input → complex spectrum ---
-    void real_mclt(const T* in, cmplxTT* out) {
+    void real_mclt(const T* in, cmplxTT* out, bool apply_window = true) {
         pack_input(in);
         backend.forward(X.data(), Y.data());
         unpack_output(out);
     }
+    
+    inline void mclt(const T* in, cmplxTT* out, bool apply_window = true) {
+        real_mclt(in, out, apply_window);
+    }
 
     // --- Inverse MCLT: complex spectrum → real output ---
-    void real_imclt(const cmplxTT* in, T* out) {
+    void real_imclt(const cmplxTT* in, T* out, bool apply_window = true) {
         pack_spectrum(in);
         backend.inverse(Y.data(), X.data());
         unpack_output(out);
+    }
+    
+    inline void imclt(const cmplxTT* in, T* out, bool apply_window = true) {
+        real_imclt(in, out, apply_window);
     }
 
     void reset() {
@@ -624,3 +632,4 @@ private:
         return v[lane];
     }
 };
+
