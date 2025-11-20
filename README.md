@@ -1,4 +1,4 @@
-MCLTReal v1.50
+MCLTReal v1.6
 (c) 2025 Dmitry Boldyrev
 
 Written by Dmitry Boldyrev with assistance of AI (claude.ai and GROK)
@@ -6,6 +6,14 @@ Written by Dmitry Boldyrev with assistance of AI (claude.ai and GROK)
 Forward / Reverse MCLT (Modulated complex lapped transform by H. Malvar) C++ class 
 templatable with either a scalar or SIMD vector with NEON optimizations.
 
+NEW: Added FFTRealHybrid auto-optimizer class so you can continue constructing 
+     FFTReal with scalars or simd type vectors, and it will auto-optimize it with
+     best possible vector SIMD to get maximum performane. So if you were to pass
+     FFTRealHybrid<float> it would actually process FFTReal internally with simd_float8
+     but you will see data resulting from forward transform as cmplxT<float>. So,
+     this is essentially an optimizer class for float, simd_float2, simd_float4, double,
+     simd_double2 types utilizing SIMD architecture.
+     
 Originally published by H. Malvar in 1999, see:
 
     H. Malvar, "A Modulated Complex Lapped Transform And Its Applications to Audio Processing". Proc. International Conference on Acoustics, Speech and Signal Processing, 1999.
