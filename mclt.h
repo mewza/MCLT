@@ -1,8 +1,9 @@
 /**
- ***    MCLTReal v1.50
+ ***    MCLTReal v1.6
  ***    mclt.h -- main include file for adding MCLT transform
  ***
- ***    Features include:
+ ***    Features include:    
+ ***        • MCLTRealHybrid added (special optimizer class works for scalar and simd_vectors 
  ***        • Hybrid TDAC/COLA-based scaling with explicit overlap compensation
  ***        • Supports arbitrary HOP sizes with proper WOLA (Weighted Overlap-Add)
  ***        • Uses FFT-to-MCLT mapping for efficiency (uses FFTReal highly optimized and accurate FFT)
@@ -522,3 +523,107 @@ private:
 };
 
 #endif // MCLT_HAS_NEON
+
+
+
+template<typename T, int N>
+class MCLTRealHybrid {
+public:
+    using T1 = SimdBase<T>;           // scalar base
+
+    static constexpr auto select_backend() {
+       if constexpr (std::is_same_v<T,float> || std::is_same_v<T,simd_float2> || std::is_same_v<T,simd_float4>) {
+           return simd_float8{};
+       } else if constexpr (std::is_same_v<T,simd_float8>) {
+           return simd_float8{};
+       } else if constexpr (std::is_same_v<T,double> || std::is_same_v<T,simd_double2>) {
+           return simd_double4{};
+       } else if constexpr (std::is_same_v<T,simd_double4>) {
+           return simd_double4{};
+       } else if constexpr (std::is_same_v<T,simd_double8>) {
+           return simd_double8{};
+       } else {
+           static_assert(sizeof(T)==0, "Unsupported type for backend");
+       }
+    }
+
+    using BT = decltype(select_backend());
+    using cmplxT1 = cmplxT<T1>;
+    using cmplxBT = cmplxT<BT>;
+
+    MCLTRealHybrid(int hop_size = N/2) : hop(hop_size) {
+        simd_size = sizeof(BT)/sizeof(T1);
+        simd_N = N / simd_size;
+        X.resize(simd_N);
+        Y.resize(simd_N);
+    }
+
+    // Forward MCLT: scalar/SIMD -> complex spectrum
+    void forward(const T* in, cmplxT1* out) {
+        pack_input(in);
+        backend.forward(X.data(), Y.data());
+        unpack_output(out);
+    }
+
+    // Inverse MCLT: complex spectrum -> scalar/SIMD
+    void inverse(const cmplxT1* in, T* out) {
+        pack_spectrum(in);
+        backend.inverse(Y.data(), X.data());
+        unpack_output(out);
+    }
+
+private:
+    int simd_size, simd_N;
+    int hop; // MCLT hop size
+    std::vector<BT> X,Y;
+    MCLTReal<BT> backend;
+
+    // --- Packing / Unpacking ---
+    void pack_input(const T* in) {
+        for(int i=0;i<simd_N;i++){
+            BT v{};
+            for(int j=0;j<simd_size;j++){
+                int idx = i*simd_size + j;
+                v_insert(v, j, in[idx]);
+            }
+            X[i] = v;
+        }
+    }
+
+    void unpack_output(cmplxT1* out){
+        for(int i=0;i<simd_N;i++){
+            BT v = Y[i];
+            for(int j=0;j<simd_size;j++){
+                int idx = i*simd_size + j;
+                out[idx].re = v_extract(v,j);
+                out[idx].im = T1(0);
+            }
+        }
+    }
+
+    void pack_spectrum(const cmplxT1* in){
+        for(int i=0;i<simd_N;i++){
+            BT v{};
+            for(int j=0;j<simd_size;j++){
+                int idx = i*simd_size + j;
+                v_insert(v,j,in[idx].re);
+            }
+            Y[i] = v;
+        }
+    }
+
+    // --- Low-level SIMD helpers ---
+    template<typename V>
+    void v_insert(BT &v,int lane,const V &val){
+        auto tmp = convertvector_safe<BT>(val);
+        for(int k=0;k<simd_size_of<BT>();k++){
+            v[k+lane] = tmp[k];
+        }
+    }
+
+    T1 v_extract(const BT &v,int lane) const {
+        return v[lane];
+    }
+
+    static constexpr int simd_size_of() { return SimdSize<T>; }
+};
