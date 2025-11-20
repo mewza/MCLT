@@ -6,7 +6,7 @@ Written by Dmitry Boldyrev with assistance of AI (claude.ai and GROK)
 Forward / Reverse MCLT (Modulated complex lapped transform by H. Malvar) C++ class 
 templatable with either a scalar or SIMD vector with NEON optimizations.
 
-NEW: Added FFTRealHybrid auto-optimizer class so you can continue constructing 
+<b>NEW</b>: Added FFTRealHybrid auto-optimizer class so you can continue constructing 
      FFTReal with scalars or simd type vectors, and it will auto-optimize it with
      best possible vector SIMD to get maximum performane. So if you were to pass
      FFTRealHybrid<float> it would actually process FFTReal internally with simd_float8
