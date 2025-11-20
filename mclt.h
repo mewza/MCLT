@@ -42,7 +42,7 @@ enum WindowType : int {
 #endif // D_WINTYPE
 
 #define MCLT_DO_NOT_WARN
-#include "mclt_neon.h"
+//#include "mclt_neon.h"
 #undef MCLT_DO_NOT_WARN
 
 #ifndef MCLT_HAS_NEON
@@ -124,13 +124,16 @@ public:
         memset(_temp_real.get(), 0, (2 * _length) * sizeof(T));
     }
     
-    T* get_current_frame() { return _current.get(); }
+    inline T* get_current_frame() { return _current.get(); }
     inline int get_length() const { return _length; }
     inline int get_half_length() const { return _M; }
     inline int get_hop() const { return _hop; }
     inline T1* window() const { return _window.get(); }
     inline int get_M() const { return _M; }
     
+    inline void get_output(T *output) {
+        memcpy(output, _current.get(), _length * sizeof(T));
+    }
     void set_hop(int hop) {
         if (hop <= 0 || hop > _length) {
             throw std::invalid_argument("Hop size must be between 1 and 2M");
@@ -517,11 +520,11 @@ private:
     std::unique_ptr<cmplxTT[], AlignedDeleterCmplxTT> _temp_complex;
     std::unique_ptr<T[], AlignedDeleterT> _temp_real;
     std::unique_ptr<T1[], AlignedDeleterT1> _window;
-    
-    
 };
 
 #endif // MCLT_HAS_NEON
+
+
 
 
 
