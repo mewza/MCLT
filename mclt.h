@@ -547,9 +547,10 @@ public:
 
     using BT = decltype(select_backend());
 
+    static constexpr int simd_size = SimdSize<BT>; // number of lanes in backend vector
+    static constexpr int simd_N = N / simd_size; // number of backend vectors to hold N elements
+    
     MCLTRealHybrid() {
-        simd_size = sizeof(BT)/sizeof(T1);
-        simd_N = N / simd_size;
         X.resize(simd_N);
         Y.resize(simd_N);
     }
@@ -581,7 +582,6 @@ public:
     }
 
 private:
-    int simd_size, simd_N;
     std::vector<BT> X,Y;
     MCLTReal<BT> backend;   // underlying MCLT backend using selected SIMD
 
@@ -632,4 +632,6 @@ private:
         return v[lane];
     }
 };
+
+
 
