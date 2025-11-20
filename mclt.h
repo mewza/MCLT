@@ -3,7 +3,6 @@
  ***    mclt.h -- main include file for adding MCLT transform
  ***
  ***    Features include:    
- ***        • MCLTRealHybrid added a special simd vector optimizer class 
  ***        • Hybrid TDAC/COLA-based scaling with explicit overlap compensation
  ***        • Supports arbitrary HOP sizes with proper WOLA (Weighted Overlap-Add)
  ***        • Uses FFT-to-MCLT mapping for efficiency (uses FFTReal highly optimized and accurate FFT)
@@ -524,114 +523,6 @@ private:
 
 #endif // MCLT_HAS_NEON
 
-
-
-template<typename T, int N>
-class MCLTRealHybrid {
-public:
-    using T1 = SimdBase<T>;       // scalar base type
-    using cmplxTT = cmplxT<T>;    // complex type for input/output
-
-    // --- Backend selection ---
-    static constexpr auto select_backend() {
-        if constexpr (std::is_same_v<T,float> || std::is_same_v<T,simd_float2> || std::is_same_v<T,simd_float4> || std::is_same_v<T,simd_float8>) {
-            return simd_float8{};
-        } else if constexpr (std::is_same_v<T,double> || std::is_same_v<T,simd_double2> || std::is_same_v<T,simd_double4>) {
-            return simd_double4{};
-        } else if constexpr (std::is_same_v<T,simd_double8>) {
-            return simd_double8{};
-        } else {
-            static_assert(sizeof(T)==0, "Unsupported type for MCLTRealHybrid backend");
-        }
-    }
-
-    using BT = decltype(select_backend());
-
-    static constexpr int simd_size = SimdSize<BT>; // number of lanes in backend vector
-    static constexpr int simd_N = N / simd_size; // number of backend vectors to hold N elements
-    
-    MCLTRealHybrid() {
-        X.resize(simd_N);
-        Y.resize(simd_N);
-    }
-
-    // --- Forward MCLT: real input → complex spectrum ---
-    void real_mclt(const T* in, cmplxTT* out, bool apply_window = true) {
-        pack_input(in);
-        backend.forward(X.data(), Y.data());
-        unpack_output(out);
-    }
-    
-    inline void mclt(const T* in, cmplxTT* out, bool apply_window = true) {
-        real_mclt(in, out, apply_window);
-    }
-
-    // --- Inverse MCLT: complex spectrum → real output ---
-    void real_imclt(const cmplxTT* in, T* out, bool apply_window = true) {
-        pack_spectrum(in);
-        backend.inverse(Y.data(), X.data());
-        unpack_output(out);
-    }
-    
-    inline void imclt(const cmplxTT* in, T* out, bool apply_window = true) {
-        real_imclt(in, out, apply_window);
-    }
-
-    void reset() {
-        backend.reset();
-    }
-
-private:
-    std::vector<BT> X,Y;
-    MCLTReal<BT> backend;   // underlying MCLT backend using selected SIMD
-
-    // --- Packing helpers ---
-    void pack_input(const T* in) {
-        for(int i=0; i<simd_N; i++) {
-            BT v{};
-            for(int j=0; j<simd_size; j++) {
-                int idx = i*simd_size + j;
-                v_insert(v,j,in[idx]);
-            }
-            X[i] = v;
-        }
-    }
-
-    void unpack_output(cmplxTT* out) {
-        for(int i=0; i<simd_N; i++) {
-            BT v = Y[i];
-            for(int j=0; j<simd_size; j++) {
-                int idx = i*simd_size + j;
-                out[idx].re = v_extract(v,j);
-                out[idx].im = T1(0);
-            }
-        }
-    }
-
-    void pack_spectrum(const cmplxTT* in) {
-        for(int i=0; i<simd_N; i++) {
-            BT v{};
-            for(int j=0; j<simd_size; j++) {
-                int idx = i*simd_size + j;
-                v_insert(v,j,in[idx].re);
-            }
-            Y[i] = v;
-        }
-    }
-
-    // --- SIMD insertion/extraction ---
-    template<typename V>
-    void v_insert(BT &v,int lane,const V &val) {
-        auto tmp = convertvector_safe<BT>(val);
-        for(int k = 0; k < SimdSize<BT>; k++){
-            v[k+lane] = tmp[k];
-        }
-    }
-
-    T1 v_extract(const BT &v,int lane) const {
-        return v[lane];
-    }
-};
 
 
 
