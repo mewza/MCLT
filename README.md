@@ -1,6 +1,10 @@
-MCLTReal v1.6
+MCLTReal v1.61
 (c) 2025 Dmitry Boldyrev
 
+NEW (v1.61): Because of bugs in FFTReal assoicated w/ SQ2_2, the gains have 
+             have been fixed / adjusted in MCLT to proper F_SQRT(2.0 / N) for
+             both analysis and synthesis
+             
 Written by Dmitry Boldyrev with assistance of AI (claude.ai and GROK)
 
 Forward / Reverse MCLT (Modulated complex lapped transform by H. Malvar) C++ class 
