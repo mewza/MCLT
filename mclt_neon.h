@@ -1,5 +1,5 @@
 /**
- ***    MCLTReal v1.50
+ ***    MCLTReal v1.51
  ***    mclt_neon.h -- DO NOT include this file, instead only include mclt.h
  ***
  ***    Features include:
@@ -94,23 +94,16 @@ public:
             throw std::invalid_argument("Hop size must be between 1 and 2M");
         }
         
-        // ✅ HYBRID SCALING APPROACH:
+        // HYBRID SCALING APPROACH:
         // Base MCLT normalization (independent of hop)
-        _analysis_scale = F_SQRT(2.0 / (T1)_length);
         
-        // For synthesis, we use TWO factors:
-        // 1. Base MCLT inverse: sqrt(length/2)
-        // 2. TDAC compensation: 0.5 for 50% overlap
-        // Combined: sqrt(length/2) * 0.5 = sqrt(length/8)
-        _synthesis_scale = F_SQRT((T1)_length / 8.0);
+        _analysis_scale = F_SQRT(2.0 / (T1)_length);
+        _synthesis_scale = F_SQRT(2.0 / (T1)_length);
         
         // 3. Overlap compensation for non-50% hop sizes
+        // This adjusts when windows don't perfectly COLA
         T1 overlap_factor = (T1)_length / (T1)_hop;
-        if (overlap_factor != 2.0) {
-            _overlap_compensation = F_SQRT(2.0 / overlap_factor);
-        } else {
-            _overlap_compensation = 1.0;
-        }
+        _overlap_compensation = 1.0 / F_SQRT(overlap_factor / 2.0);
         
         init_window();
         reset();
