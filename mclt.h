@@ -1,8 +1,8 @@
 /**
- ***    MCLTReal v1.6
+ ***    MCLTReal v1.51
  ***    mclt.h -- main include file for adding MCLT transform
  ***
- ***    Features include:    
+ ***    Features include:
  ***        • Hybrid TDAC/COLA-based scaling with explicit overlap compensation
  ***        • Supports arbitrary HOP sizes with proper WOLA (Weighted Overlap-Add)
  ***        • Uses FFT-to-MCLT mapping for efficiency (uses FFTReal highly optimized and accurate FFT)
@@ -24,7 +24,7 @@
 #include <cstring>
 #include <cmath>
 #include <stdexcept>
-#include <mss/const1.h>
+#include "const1.h"
 #include "fftreal.h"
 
 #ifndef D_WINTYPE
@@ -42,7 +42,7 @@ enum WindowType : int {
 #endif // D_WINTYPE
 
 #define MCLT_DO_NOT_WARN
-//#include "mclt_neon.h"
+#include "mclt_neon.h"
 #undef MCLT_DO_NOT_WARN
 
 #ifndef MCLT_HAS_NEON
@@ -95,23 +95,14 @@ public:
         
         // HYBRID SCALING APPROACH:
         // Base MCLT normalization (independent of hop)
-        _analysis_scale = F_SQRT(2.0 / (T1)_length);
         
-        // For synthesis, we use TWO factors:
-        // 1. Base MCLT inverse: sqrt(length/2)
-        // 2. TDAC compensation: 0.5 for 50% overlap
-        // Combined: sqrt(length/2) * 0.5 = sqrt(length/8)
-        _synthesis_scale = F_SQRT((T1)_length / 8.0);
+        _analysis_scale = F_SQRT(2.0 / (T1)_length);
+        _synthesis_scale = F_SQRT(2.0 / (T1)_length);
         
         // 3. Overlap compensation for non-50% hop sizes
         // This adjusts when windows don't perfectly COLA
         T1 overlap_factor = (T1)_length / (T1)_hop;
-        if (overlap_factor != 2.0) {
-            // For hop != M, compensate by sqrt(2/overlap_factor)
-            _overlap_compensation = F_SQRT(2.0 / overlap_factor);
-        } else {
-            _overlap_compensation = 1.0;  // No compensation for 50% overlap
-        }
+        _overlap_compensation = 1.0 / F_SQRT(overlap_factor / 2.0);
         
         init_window();
         reset();
@@ -124,16 +115,17 @@ public:
         memset(_temp_real.get(), 0, (2 * _length) * sizeof(T));
     }
     
-    inline T* get_current_frame() { return _current.get(); }
+    inline const T* get_current_frame() { return _current.get(); }
     inline int get_length() const { return _length; }
     inline int get_half_length() const { return _M; }
     inline int get_hop() const { return _hop; }
-    inline T1* window() const { return _window.get(); }
+    inline const T1* window() const { return _window.get(); }
     inline int get_M() const { return _M; }
     
     inline void get_output(T *output) {
         memcpy(output, _current.get(), _length * sizeof(T));
     }
+    
     void set_hop(int hop) {
         if (hop <= 0 || hop > _length) {
             throw std::invalid_argument("Hop size must be between 1 and 2M");
@@ -304,7 +296,7 @@ public:
         
         // Optimized paths for common hop sizes
         if (hop == M) {
-            // ✅ Standard 50% overlap (most common, fastest)
+            //  Standard 50% overlap (most common, fastest)
             for (int i = 0; i < M; i++) {
                 output[i] = pp[i + M] + p[i];
             }
@@ -313,13 +305,13 @@ public:
             }
         }
         else if (hop == M / 2) {
-            // ✅ 75% overlap (hop = M/2)
+            //  75% overlap (hop = M/2)
             for (int i = 0; i < hop; i++) {
                 output[i] = pp[i + M + hop] + p[i + hop] + c[i];
             }
         }
         else if (hop == M / 4) {
-            // ✅ 87.5% overlap (hop = M/4)
+            //  87.5% overlap (hop = M/4)
             for (int i = 0; i < hop; i++) {
                 // Sum contributions from 4 overlapping frames
                 T sum = 0;
@@ -331,7 +323,7 @@ public:
             }
         }
         else if (hop == 3 * M / 4) {
-            // ✅ 25% overlap (hop = 3M/4)
+            //  25% overlap (hop = 3M/4)
             for (int i = 0; i < M / 2; i++) {
                 output[i] = pp[i + M / 2] + p[i + M];
             }
@@ -523,9 +515,4 @@ private:
 };
 
 #endif // MCLT_HAS_NEON
-
-
-
-
-
 
